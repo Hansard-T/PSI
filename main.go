@@ -90,8 +90,6 @@ func main() {
 	endTime := time.Now()
 	elapsedTime := endTime.Sub(startTime)
 
-	//fmt.Println("P:", pdata.P)
-	//fmt.Println("n0:", pdata.N0)
 	fmt.Println("idList:", idList)
 	fmt.Println("mList:", mList)
 	fmt.Println("adList:", adList)

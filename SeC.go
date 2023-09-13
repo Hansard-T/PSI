@@ -118,26 +118,13 @@ func SeCollect(alpha *big.Int, vouch Vouch) ([]string, []int, [][]byte) {
 	idList := []string{}
 	mList := []int{}
 	adList := [][]byte{}
-	//shList := [][]byte{}
 
 	idList = append(idList, id)
 	mList = append(mList, im.Match)
 	if im.I == 1 && im.Match == 1 {
-		//adct := decrypted1.Adct
-		//sh := decrypted1.Sh
 		adList = append(adList,decrypted1.Adct)
-		//jsonData, _ := json.Marshal(sh)
-		//// 将 JSON 字符串转换为字节数组
-		//byteData := []byte(jsonData)
-		//shList = append(shList, byteData)
 	}else if im.I == 2 && im.Match == 1 {
-		//adct := decrypted2.Adct
-		//sh := decrypted2.Sh
 		adList = append(adList,decrypted2.Adct)
-		//jsonData, _ := json.Marshal(sh)
-		//// 将 JSON 字符串转换为字节数组
-		//byteData := []byte(jsonData)
-		//shList = append(shList, byteData)
 	}else{
 		adList = append(adList, nil)
 	}

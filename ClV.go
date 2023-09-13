@@ -66,47 +66,6 @@ func SeEnc(key []byte, plaintext interface{}) ([]byte, error) {
 	return append(nonce, ciphertext...), nil
 }
 
-//func RandF() *big.Int {
-//	// 创建一个大素数 p，满足 p ≥ 2^k
-//	p, _ := rand.Prime(rand.Reader, k)
-//
-//	// 生成随机的 F 中的元素 x，0 < x < p
-//	x, _ := rand.Int(rand.Reader, p)
-//
-//	return x
-//}
-
-//func PX(x *big.Int, coefficients []*big.Int) *big.Int {
-//	result := new(big.Int)
-//
-//	// 遍历系数数组，计算多项式的值
-//	for i, coeff := range coefficients {
-//		// 计算当前系数乘以 x 的幂次方
-//		term := new(big.Int).Set(coeff)
-//		if i > 0 {
-//			term.Exp(x, big.NewInt(int64(i)), nil)
-//			term.Mul(term, coeff)
-//		}
-//
-//		// 将当前项添加到结果中
-//		result.Add(result, term)
-//	}
-//
-//	return result
-//}
-
-// bytesToBigIntSlice 将 [][]byte 转换为 []*big.Int
-//func bytesToBigIntSlice(byteSlice [][]byte) []*big.Int {
-//	intSlice := make([]*big.Int, len(byteSlice))
-//
-//	for i, b := range byteSlice {
-//		intSlice[i] = new(big.Int)
-//		intSlice[i].SetBytes(b)
-//	}
-//
-//	return intSlice
-//}
-
 func RandZq(q *big.Int) *big.Int {
 	// 生成随机的[0, q)之间的整数
 	randValue, _ := rand.Int(rand.Reader, q)
@@ -132,20 +91,11 @@ func ClVch(pdata Pdata, ckey CKey, y int, id string, ad []byte, G *big.Int, q *b
 	h1 := pdata.H1
 	h2 := pdata.H2
 
- 	// 从 ckey 中解析出其组件
+ 	// 从 ckey 中解析出Adkey
  	adkey := ckey.Adkey
- 	//a := ckey.A
 
 	// 使用 SE_Enc 函数对 ad 加密
 	adct, _:= SeEnc(adkey, ad)
-	//ab := bytesToBigIntSlice(a)
-	//// 生成随机数 x，确保 x ∈ F \ {0}
-	//x := RandF()
-	//
-	//// 使用 Padkey 函数生成 z
-	//z := PX(x, ab)
-
-	// 计算 R、w1 和 w2
 	R := H(y)
 	w := make([]int, 3)  // 创建一个包含两个元素的整数切片
 	w[1] = h1(y)         // 将 w1 分配给第一个元素
@@ -183,14 +133,8 @@ func ClVch(pdata Pdata, ckey CKey, y int, id string, ad []byte, G *big.Int, q *b
 	K1 := KDF(S1)
 	K2 := KDF(S2)
 
-	//sh := Share{
-	//	X: x,
-	//	Z: z,
-	//}
-
 	od := OD{
 		Adct: adct,
-		//Sh: sh,
 	}
 	// 使用 SE_Enc 函数对 (adct, sh) 使用 K1 和 K2 加密
 	ct1, _:= SeEnc(K1, od)

@@ -65,17 +65,6 @@ func ClInit(pdata Pdata ,U []int) CKey {
 		panic(err)
 	}
 
-	// 生成随机的 a1, a2, ..., at，这里的 t 可以根据您的需求设定
-	//t := 5
-	//a := make([][]byte, t)
-	//for i := 0; i < t; i++ {
-	//	a[i] = make([]byte, k/8)
-	//	_, err := rand.Read(a[i])
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//}
-
 	// 组合 adkey 和 a1, a2, ..., at 成为 ckey
 	ckey := CKey{adkey}
 
