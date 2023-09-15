@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 )
 
@@ -53,11 +54,9 @@ func H(y int) *big.Int {
 }
 
 func main() {
-	startTime := time.Now()
-	// 创建一个示例 pdata
-	//X := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100}
+
 	X := generateX()
-	fmt.Println("X: ", X)
+
 	// 创建一个示例 U（这里使用一些整数作为示例）
 	U := make([]int, 1000)
 	for i := 1; i <= 1000; i++ {
@@ -66,33 +65,54 @@ func main() {
 
 	data := "Hello, world!" // 字符串
 	byteData := []byte(data) // 转换为 []byte
-	fmt.Println("ad:", string(byteData))
 	// 调用 SePost 生成 pdata 和 alpha
+
 	pdata, alpha := SePost(X)
 
-	// 调用 ClInit 生成 ckey
-	ckey := ClInit(pdata,  U)
+	idList := []int{}
+	mList := []int{}
+	adList := [][]byte{}
+	numUsers := 512 // 512个用户
+	elapsedSeTime := time.Duration(0)
 
-	id, Q1, ct1, Q2, ct2 := ClVch(pdata, ckey, 500, "1", byteData, G, q)
-	vouch := Vouch{
-		Id:  id,
-		Q1:  Q1,
-		Ct1: ct1,
-		Q2:  Q2,
-		Ct2: ct2,
+	var wg sync.WaitGroup
+	wg.Add(numUsers)
+
+	for i := 1; i <= numUsers; i++ {
+		j := 0
+		go func(userID int) {
+			defer wg.Done()
+
+			// 生成 ckey 并获取时间
+			ckey := ClInit(pdata, U) // 这里使用 pdata 和 U
+
+			// 调用 ClVch 生成 id, Q1, ct1, Q2, ct2 并获取时间
+			y := generateY()
+			id, Q1, ct1, Q2, ct2 := ClVch(pdata, ckey, y, userID, byteData, G, q) // 这里使用 pdata, ckey 和其他参数
+
+			// 使用生成的数据执行其他操作
+			vouch := Vouch{
+				Id:  id,
+				Q1:  Q1,
+				Ct1: ct1,
+				Q2:  Q2,
+				Ct2: ct2,
+			}
+			SeSTime := time.Now()
+			SeCollect(alpha, vouch, &idList, &mList, &adList)
+			err := SeDec(ckey.Adkey, adList[j], &byteData)
+			j++
+			SeETime := time.Now()
+			elapsedSeTime = elapsedSeTime + SeETime.Sub(SeSTime)
+			if err != nil {
+				fmt.Printf("User %d: Error during SeDec: %v\n", userID, err)
+			}
+		}(i)
 	}
-	idList, mList, adList := SeCollect(alpha, vouch)
-	err := SeDec(ckey.Adkey, adList[0], &byteData)
-	if err != nil {
-		return 
-	}
 
-	endTime := time.Now()
-	elapsedTime := endTime.Sub(startTime)
-
-	fmt.Println("idList:", idList)
+	wg.Wait()
+	fmt.Printf("Average server working hours: %v\n", elapsedSeTime/time.Duration(numUsers))
+	fmt.Println("idList: ", idList)
 	fmt.Println("mList:", mList)
 	fmt.Println("adList:", adList)
-	fmt.Println("ad:", string(byteData))
-	fmt.Printf("程序执行时间: %v\n", elapsedTime)
 }

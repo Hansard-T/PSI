@@ -84,7 +84,7 @@ func RandB() int64 {
 	return 2
 }
 
-func ClVch(pdata Pdata, ckey CKey, y int, id string, ad []byte, G *big.Int, q *big.Int) (string, *big.Int, []byte, *big.Int, []byte) {
+func ClVch(pdata Pdata, ckey CKey, y int, id int, ad []byte, G *big.Int, q *big.Int) (int, *big.Int, []byte, *big.Int, []byte) {
 	// 从 pdata 中解析出其组件
 	L := pdata.L
 	P := pdata.P

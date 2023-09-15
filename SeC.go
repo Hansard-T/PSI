@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -11,7 +12,7 @@ import (
 )
 
 type Vouch struct {
-	Id  string
+	Id  int
 	Q1  *big.Int
 	Ct1 []byte
 	Q2  *big.Int
@@ -25,6 +26,14 @@ type OD struct {
 type IM struct {
 	I int
 	Match int
+}
+
+func generateY() int {
+	rand.Seed(time.Now().UnixNano()) // 使用当前时间作为随机数种子
+
+	// 生成1000以内的随机数
+	y := rand.Intn(1000)
+	return y
 }
 
 func generateX() []int {
@@ -66,7 +75,7 @@ func SeDec(key, ciphertext []byte, plaintext interface{}) error {
 	nonceSize := gcm.NonceSize()
 	// 提取 nonce 和实际的密文
 	if ciphertext == nil {
-		panic("Not match")
+		return errors.New("ciphertext is nil, not a match")
 	}
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 	// 使用 GCM 解密模式进行解密
@@ -83,7 +92,7 @@ func SeDec(key, ciphertext []byte, plaintext interface{}) error {
 	return nil
 }
 
-func SeCollect(alpha *big.Int, vouch Vouch) ([]string, []int, [][]byte) {
+func SeCollect(alpha *big.Int, vouch Vouch, idList *[]int, mList *[]int, adList *[][]byte) {
 	id := vouch.Id
 	Q1 := vouch.Q1
 	ct1 := vouch.Ct1
@@ -115,19 +124,13 @@ func SeCollect(alpha *big.Int, vouch Vouch) ([]string, []int, [][]byte) {
 		im.Match = 1
 	}
 
-	idList := []string{}
-	mList := []int{}
-	adList := [][]byte{}
-
-	idList = append(idList, id)
-	mList = append(mList, im.Match)
+	*idList = append(*idList, id)
+	*mList = append(*mList, im.Match)
 	if im.I == 1 && im.Match == 1 {
-		adList = append(adList,decrypted1.Adct)
+		*adList = append(*adList,decrypted1.Adct)
 	}else if im.I == 2 && im.Match == 1 {
-		adList = append(adList,decrypted2.Adct)
+		*adList = append(*adList,decrypted2.Adct)
 	}else{
-		adList = append(adList, nil)
+		*adList = append(*adList, nil)
 	}
-
-	return idList, mList, adList
 }
