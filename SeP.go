@@ -38,7 +38,7 @@ func MkHT1(sizeX int) (int, func(int) int, func(int) int) {
 	h2 := func(x int) int {
 		// 将整数 (x + 1) 转换为 4 个字节的字节数组
 		xPlusOneBytes := make([]byte, 4)
-		binary.LittleEndian.PutUint32(xPlusOneBytes, uint32((x + 1)*h1(x)))
+		binary.LittleEndian.PutUint32(xPlusOneBytes, uint32((x + 1)*h1(x + 1)))
 
 		// 使用 MurmurHash 3 计算哈希值
 		hash := murmur3.Sum32(xPlusOneBytes)
@@ -88,7 +88,6 @@ func MkHT2(X []int, h1, h2 func(int) int, n0 int) []int {
 			}
 		}
 	}
-	fmt.Println("T:", T)
 	return T
 }
 

@@ -5,7 +5,6 @@ import (
 	"crypto/cipher"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math/big"
 	"math/rand"
 	"time"
@@ -45,7 +44,7 @@ func generateX() []int {
 	// 创建一个切片用于存储不重复的数字
 	uniqueSlice := make([]int, 0)
 
-	for len(uniqueSlice) < 512 {
+	for len(uniqueSlice) < 1000 {
 		// 生成一个随机数
 		randomNumber := rand.Intn(1000) + 1
 
@@ -105,8 +104,6 @@ func SeCollect(alpha *big.Int, vouch Vouch, idList *[]int, mList *[]int, adList 
 
 	var decrypted1 OD
 	var decrypted2 OD
-	fmt.Println("ct1: ", ct1)
-	fmt.Println("ct2: ", ct2)
 	M1 := SeDec(K1, ct1, &decrypted1)
 	M2 := SeDec(K2, ct2, &decrypted2)
 

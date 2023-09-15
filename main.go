@@ -11,6 +11,9 @@ import (
 
 var q *big.Int
 var G *big.Int
+var mu sync.Mutex
+var totalTime time.Duration
+var wg sync.WaitGroup
 
 func init() {
 	// 在 init 函数中为全局变量赋值
@@ -72,14 +75,11 @@ func main() {
 	idList := []int{}
 	mList := []int{}
 	adList := [][]byte{}
-	numUsers := 512 // 512个用户
-	elapsedSeTime := time.Duration(0)
+	numUsers := 1000 // 512个用户
 
-	var wg sync.WaitGroup
 	wg.Add(numUsers)
 
 	for i := 1; i <= numUsers; i++ {
-		j := 0
 		go func(userID int) {
 			defer wg.Done()
 
@@ -87,9 +87,8 @@ func main() {
 			ckey := ClInit(pdata, U) // 这里使用 pdata 和 U
 
 			// 调用 ClVch 生成 id, Q1, ct1, Q2, ct2 并获取时间
-			y := generateY()
-			id, Q1, ct1, Q2, ct2 := ClVch(pdata, ckey, y, userID, byteData, G, q) // 这里使用 pdata, ckey 和其他参数
-
+			//y := generateY()
+			id, Q1, ct1, Q2, ct2 := ClVch(pdata, ckey, X[userID%1000], userID, byteData, G, q)
 			// 使用生成的数据执行其他操作
 			vouch := Vouch{
 				Id:  id,
@@ -100,10 +99,12 @@ func main() {
 			}
 			SeSTime := time.Now()
 			SeCollect(alpha, vouch, &idList, &mList, &adList)
-			err := SeDec(ckey.Adkey, adList[j], &byteData)
-			j++
-			SeETime := time.Now()
-			elapsedSeTime = elapsedSeTime + SeETime.Sub(SeSTime)
+			err := SeDec(ckey.Adkey, adList[len(adList)-1], &byteData)
+			elapsed := time.Since(SeSTime)
+			fmt.Println("Elapsed: ", elapsed)
+			mu.Lock()
+			totalTime += elapsed
+			mu.Unlock()
 			if err != nil {
 				fmt.Printf("User %d: Error during SeDec: %v\n", userID, err)
 			}
@@ -111,8 +112,6 @@ func main() {
 	}
 
 	wg.Wait()
-	fmt.Printf("Average server working hours: %v\n", elapsedSeTime/time.Duration(numUsers))
-	fmt.Println("idList: ", idList)
-	fmt.Println("mList:", mList)
-	fmt.Println("adList:", adList)
+	fmt.Println("elapsed time:", totalTime)
+	fmt.Printf("Average server working hours: %v\n", totalTime/time.Duration(numUsers))
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math/big"
 )
 
@@ -25,7 +24,6 @@ func Valid(pdata Pdata, U []int) bool {
 	// 要求 L 必须在 G \ {0} 中
 	zero := big.NewInt(0)
 	if L.Cmp(zero) == 0 || L.Cmp(q) >= 0 {
-		fmt.Println("111")
 		return false
 	}
 
@@ -33,7 +31,6 @@ func Valid(pdata Pdata, U []int) bool {
 	uniqueP := make(map[string]bool)
 	for _, p := range P {
 		if p.Cmp(zero) == 0 || p.Cmp(q) >= 0 || uniqueP[p.String()] {
-			fmt.Println("222")
 			return false
 		}
 		uniqueP[p.String()] = true
@@ -43,7 +40,6 @@ func Valid(pdata Pdata, U []int) bool {
 	n0 := len(P)
 	for _, x := range U {
 		if h1(x) < 1 || h1(x) > n0 || h2(x) < 1 || h2(x) > n0 || h1(x) == h2(x) {
-			fmt.Println("333")
 			return false
 		}
 	}
