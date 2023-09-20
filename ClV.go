@@ -133,12 +133,9 @@ func ClVch(pdata Pdata, ckey CKey, y int, id int, ad []byte, G *big.Int, q *big.
 	K1 := KDF(S1)
 	K2 := KDF(S2)
 
-	od := OD{
-		Adct: adct,
-	}
 	// 使用 SE_Enc 函数对 (adct, sh) 使用 K1 和 K2 加密
-	ct1, _:= SeEnc(K1, od)
-	ct2, _:= SeEnc(K2, od)
+	ct1, _:= SeEnc(K1, adct)
+	ct2, _:= SeEnc(K2, adct)
 
 	// 返回结果
 	return id, Q1, ct1, Q2, ct2

@@ -18,10 +18,6 @@ type Vouch struct {
 	Ct2 []byte
 }
 
-type OD struct {
-	Adct []byte
-}
-
 type IM struct {
 	I int
 	Match int
@@ -91,7 +87,7 @@ func SeDec(key, ciphertext []byte, plaintext interface{}) error {
 	return nil
 }
 
-func SeCollect(alpha *big.Int, vouch Vouch, idList *[]int, mList *[]int, adList *[][]byte) {
+func SeCollect(alpha *big.Int, vouch Vouch, idList *[]int, mList *[]int, adList *[][]byte){
 	id := vouch.Id
 	Q1 := vouch.Q1
 	ct1 := vouch.Ct1
@@ -102,8 +98,8 @@ func SeCollect(alpha *big.Int, vouch Vouch, idList *[]int, mList *[]int, adList 
 	K1 := KDF(S1)
 	K2 := KDF(S2)
 
-	var decrypted1 OD
-	var decrypted2 OD
+	var decrypted1 []byte
+	var decrypted2 []byte
 	M1 := SeDec(K1, ct1, &decrypted1)
 	M2 := SeDec(K2, ct2, &decrypted2)
 
@@ -124,9 +120,9 @@ func SeCollect(alpha *big.Int, vouch Vouch, idList *[]int, mList *[]int, adList 
 	*idList = append(*idList, id)
 	*mList = append(*mList, im.Match)
 	if im.I == 1 && im.Match == 1 {
-		*adList = append(*adList,decrypted1.Adct)
+		*adList = append(*adList,decrypted1)
 	}else if im.I == 2 && im.Match == 1 {
-		*adList = append(*adList,decrypted2.Adct)
+		*adList = append(*adList,decrypted2)
 	}else{
 		*adList = append(*adList, nil)
 	}

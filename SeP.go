@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/minio/highwayhash"
 	"github.com/spaolacci/murmur3"
 	"math/big"
 )
@@ -20,29 +21,60 @@ type Pdata struct {
 	H2  func(int) int
 }
 
+func convertGeneInfoToX(geneInfo GeneInfor) int {
+	// 使用 GeneID 字段作为基础计算 x
+	x := geneInfo.GeneID
+
+	// 计算 AssociatedGenes 和 RelatedGenes 字段的哈希值
+	associatedGenesHash := murmur3.Sum32([]byte(geneInfo.AssociatedGenes))
+	relatedGenesHash := murmur3.Sum32([]byte(geneInfo.RelatedGenes))
+
+	// 将哈希值合并到 x 中，并对 x 进行更复杂的操作
+	// 例如，您可以使用位运算、乘法、异或等操作，以减少重复的可能性
+	x = ((x << 5) ^ x) + int(associatedGenesHash)
+	x = ((x << 5) ^ x) + int(relatedGenesHash)
+
+	return x
+}
+
 // MkHT1 用于生成哈希表大小 n0 和两个哈希函数 h1, h2
 func MkHT1(sizeX int) (int, func(int) int, func(int) int) {
 	// 假设哈希表的大小 n0 是集合大小的四倍
-	n0 := sizeX * 4
+	n0 := sizeX * 2
 
+	// 使用 CityHash 替代 MurmurHash
 	h1 := func(x int) int {
-		// 将整数 x 转换为 4 个字节的字节数组
+		// 将整数 x 转换为字节数组
 		xBytes := make([]byte, 4)
 		binary.LittleEndian.PutUint32(xBytes, uint32(x))
 
-		// 使用 MurmurHash 3 计算哈希值
-		hash := murmur3.Sum32(xBytes)
-		return int(hash % uint32(n0-1)) + 1
+		// 16 字节的有效密钥（可以根据需求更改）
+		key := []byte("7d80c9fe67d9af15c04d2b6d80f6d004")
+
+		// 使用 CityHash 计算哈希值
+		hash, err := highwayhash.New64(key)
+		if err != nil {
+			panic(err)
+		}
+		hash.Write(xBytes)
+		return int(hash.Sum64() % uint64(n0-1)) + 1
 	}
 
 	h2 := func(x int) int {
-		// 将整数 (x + 1) 转换为 4 个字节的字节数组
+		// 将整数 (x + 1) 转换为字节数组
 		xPlusOneBytes := make([]byte, 4)
-		binary.LittleEndian.PutUint32(xPlusOneBytes, uint32((x + 1)*h1(x + 1)))
+		binary.LittleEndian.PutUint32(xPlusOneBytes, uint32(x))
 
-		// 使用 MurmurHash 3 计算哈希值
-		hash := murmur3.Sum32(xPlusOneBytes)
-		return int(hash % uint32(n0-1)) + 1
+		// 16 字节的有效密钥（可以根据需求更改）
+		key := []byte("6f4ca794b9689e8c2611624e4ad0b284")
+
+		// 使用 CityHash 计算哈希值
+		hash, err := highwayhash.New64(key)
+		if err != nil {
+			panic(err)
+		}
+		hash.Write(xPlusOneBytes)
+		return int(hash.Sum64() % uint64(n0-1)) + 1
 	}
 
 	return n0, h1, h2
@@ -65,6 +97,7 @@ func MkHT2(X []int, h1, h2 func(int) int, n0 int) []int {
 		for {
 			if attempts >= maxAttempts  || occupied >= n0 {
 				// 如果达到最大尝试次数或表已满，停止插入并输出一条错误信息
+				fmt.Println("occupied: ", occupied)
 				fmt.Println("插入失败，哈希表已满。")
 				return T
 			}
