@@ -80,7 +80,9 @@ func SeDec(key, ciphertext []byte, plaintext interface{}) error {
 	}
 
 	// 反序列化解密后的字节切片为原始结构体
-	if err := json.Unmarshal(data, plaintext); err != nil {
+	err = json.Unmarshal(data, plaintext)
+	if err != nil {
+		plaintext = nil
 		return err
 	}
 

@@ -106,7 +106,6 @@ func removeDuplicates(geneInfoList []GeneInfor) []GeneInfor {
 }
 
 func main() {
-
 	// 打开CSV文件
 	file, err := os.Open("/Users/tangxianning/Downloads/input.csv")
 	if err != nil {
@@ -177,7 +176,7 @@ func main() {
 	idList := []int{}
 	mList := []int{}
 	adList := [][]byte{}
-	numUsers := 1 //用户数
+	numUsers := 1000 //用户数
 
 	wg.Add(numUsers)
 
@@ -188,11 +187,7 @@ func main() {
 			// 生成 ckey 并获取时间
 			ckey := ClInit(pdata, U) // 这里使用 pdata 和 U
 
-			// 调用 ClVch 生成 id, Q1, ct1, Q2, ct2 并获取时间
-			//y := generateY()
-
-			id, Q1, ct1, Q2, ct2 := ClVch(pdata, ckey, X[0], userID, byteData, G, q)
-			// 使用生成的数据执行其他操作
+			id, Q1, ct1, Q2, ct2 := ClVch(pdata, ckey, X[userID-1], userID, byteData, G, q)
 			vouch := Vouch{
 				Id:  id,
 				Q1:  Q1,
@@ -212,7 +207,7 @@ func main() {
 			}
 			fmt.Println("Match successful!")
 			for _, adct := range adctList {
-				if string(byteData) == adct.ConceptID{
+				if adct.ConceptID == string(byteData) && byteData != nil{
 					fmt.Printf("User %d: You might have %s\n",userID , adct.DiseaseName)
 				}
 			}
