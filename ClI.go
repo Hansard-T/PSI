@@ -23,23 +23,23 @@ func Valid(pdata Pdata, U []int) bool {
 
 	// 要求 L 必须在 G \ {0} 中
 	zero := big.NewInt(0)
-	if L.Cmp(zero) == 0 || L.Cmp(q) >= 0 {
+	if !curve.IsOnCurve(L.x, L.y) || L.x.Cmp(big.NewInt(0)) == 0 || L.y.Cmp(big.NewInt(0)) == 0 {
 		return false
 	}
 
 	// 要求 P1, ..., Pn0 必须在 G \ {0} 中且各不相同
 	uniqueP := make(map[string]bool)
 	for _, p := range P {
-		if p.Cmp(zero) == 0 || p.Cmp(q) >= 0 || uniqueP[p.String()] {
+		if !curve.IsOnCurve(p.x, p.y) || p.x.Cmp(zero) == 0 || p.x.Cmp(q) >= 0 || uniqueP[p.x.String()] {
 			return false
 		}
-		uniqueP[p.String()] = true
+		uniqueP[p.x.String()] = true
 	}
 
 	// 要求 h1 和 h2 必须是从 U 到 [1..n0] 的映射
 	n0 := len(P)
 	for _, x := range U {
-		if h1(x) < 1 || h1(x) > n0 || h2(x) < 1 || h2(x) > n0 || h1(x) == h2(x) {
+		if h1(x) < 1 || h1(x) > n0 || h2(x) < 1 || h2(x) > n0  {
 			return false
 		}
 	}

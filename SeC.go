@@ -4,7 +4,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/json"
-	"errors"
 	"math/big"
 	"math/rand"
 	"time"
@@ -12,9 +11,9 @@ import (
 
 type Vouch struct {
 	Id  int
-	Q1  *big.Int
+	Q1  Q
 	Ct1 []byte
-	Q2  *big.Int
+	Q2  Q
 	Ct2 []byte
 }
 
@@ -68,35 +67,44 @@ func SeDec(key, ciphertext []byte, plaintext interface{}) error {
 
 	// 获取 nonce 大小
 	nonceSize := gcm.NonceSize()
-	// 提取 nonce 和实际的密文
+
 	if ciphertext == nil {
-		return errors.New("ciphertext is nil, not a match")
+		// 如果 ciphertext 为 nil，则将 plaintext 设置为空
+		plaintext = nil
+		return nil // 返回 nil 错误，表示解密成功
 	}
+
+	// 提取 nonce 和实际的密文
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+
 	// 使用 GCM 解密模式进行解密
 	data, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
+		// 解密失败时将 plaintext 设置为空
+		plaintext = nil
 		return err
 	}
 
 	// 反序列化解密后的字节切片为原始结构体
 	err = json.Unmarshal(data, plaintext)
 	if err != nil {
+		// 解密成功但反序列化失败时也将 plaintext 设置为空
 		plaintext = nil
 		return err
 	}
-
 	return nil
 }
 
 func SeCollect(alpha *big.Int, vouch Vouch, idList *[]int, mList *[]int, adList *[][]byte){
+	var S1 S
+	var S2 S
 	id := vouch.Id
 	Q1 := vouch.Q1
 	ct1 := vouch.Ct1
 	Q2 := vouch.Q2
 	ct2 := vouch.Ct2
-	S1 := new(big.Int).Mul(alpha, Q1)
-	S2 := new(big.Int).Mul(alpha, Q2)
+	S1.x, S1.y = curve.ScalarMult(Q1.x, Q1.y, alpha.Bytes())
+	S2.x, S2.y = curve.ScalarMult(Q2.x, Q2.y, alpha.Bytes())
 	K1 := KDF(S1)
 	K2 := KDF(S2)
 

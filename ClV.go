@@ -3,17 +3,35 @@ package main
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
-	"golang.org/x/crypto/hkdf"
-	"io"
 	"math/big"
 )
 
-func KDF(S *big.Int) []byte {
-	// 将 S 转换为字节数组
-	sBytes := S.Bytes()
+type Hxy struct {
+	x *big.Int
+	y *big.Int
+}
+
+type Q struct {
+	x *big.Int
+	y *big.Int
+}
+
+type S struct {
+	x *big.Int
+	y *big.Int
+}
+
+func KDF(S S) []byte {
+	// 将点 S 的 x 和 y 坐标转换为字节数组
+	xBytes := S.x.Bytes()
+	yBytes := S.y.Bytes()
+
+	// 连接 x 和 y 坐标的字节数组
+	concatenatedBytes := append(xBytes, yBytes...)
 
 	// 定义 salt（如果需要的话）
 	salt := []byte("salt") // 可以更改为您自己的 salt
@@ -24,13 +42,21 @@ func KDF(S *big.Int) []byte {
 	// 定义所需的密钥长度
 	keyLength := 32 // 更改为所需的长度
 
-	// 使用 HKDF 函数生成密钥
-	hkdfInstance := hkdf.New(sha256.New, sBytes, salt, info)
-	key := make([]byte, keyLength)
-	_, err := io.ReadFull(hkdfInstance, key)
-	if err != nil {
-		panic(err)
+	// 创建一个 HMAC 实例，并使用连接后的字节数组作为消息
+	hmacInstance := hmac.New(sha256.New, concatenatedBytes)
+	// 如果需要，可以添加 salt
+	if salt != nil {
+		hmacInstance.Write(salt)
 	}
+
+	// 如果需要，可以添加 info
+	if info != nil {
+		hmacInstance.Write(info)
+	}
+
+	// 生成密钥
+	key := make([]byte, keyLength)
+	hmacInstance.Sum(key)
 
 	return key
 }
@@ -84,8 +110,13 @@ func RandB() int64 {
 	return 2
 }
 
-func ClVch(pdata Pdata, ckey CKey, y int, id int, ad []byte, G *big.Int, q *big.Int) (int, *big.Int, []byte, *big.Int, []byte) {
+func ClVch(pdata Pdata, ckey CKey, y int, id int, ad []byte, q *big.Int) (int, Q, []byte, Q, []byte) {
 	// 从 pdata 中解析出其组件
+	var R Hxy
+	var Q1 Q
+	var Q2 Q
+	var S1 S
+	var S2 S
 	L := pdata.L
 	P := pdata.P
 	h1 := pdata.H1
@@ -96,7 +127,8 @@ func ClVch(pdata Pdata, ckey CKey, y int, id int, ad []byte, G *big.Int, q *big.
 
 	// 使用 SE_Enc 函数对 ad 加密
 	adct, _:= SeEnc(adkey, ad)
-	R := H(y)
+
+	R.x, R.y,_ = H(y)
 	w := make([]int, 3)  // 创建一个包含两个元素的整数切片
 	w[1] = h1(y)         // 将 w1 分配给第一个元素
 	w[2] = h2(y)         // 将 w2 分配给第二个元素
@@ -110,24 +142,23 @@ func ClVch(pdata Pdata, ckey CKey, y int, id int, ad []byte, G *big.Int, q *big.
 	// 生成随机数 b，确保 b ∈ {1, 2}
 	b := RandB()
 	// 计算 Q1、S1、Q2 和 S2
-	Q1 := new(big.Int).Set(Beta1)
-	Q1.Mul(Q1, R)
-	Q1.Add(Q1, new(big.Int).Mul(Gamma1, G))
+	Q1.x, Q1.y = curve.ScalarMult(R.x, R.y, Beta1.Bytes())
+	x1, y1 := curve.ScalarBaseMult(Gamma1.Bytes())
+	Q1.x, Q1.y = curve.Add(Q1.x, Q1.y, x1, y1)
 
 	wb := w[b]
 	w3minusb := w[3-b]
+	S1.x, S1.y = curve.ScalarMult(P[wb].x, P[wb].y, Beta1.Bytes())
+	x2, y2 := curve.ScalarMult(L.x, L.y, Gamma1.Bytes())
+	S1.x, S1.y = curve.Add(S1.x, S1.y, x2, y2)
 
-	S1 := new(big.Int).Set(Beta1)
-	S1.Mul(S1, P[wb])
-	S1.Add(S1, new(big.Int).Mul(Gamma1, L))
+	Q2.x, Q2.y = curve.ScalarMult(R.x, R.y, Beta2.Bytes())
+	x3, y3 := curve.ScalarBaseMult(Gamma2.Bytes())
+	Q2.x, Q2.y = curve.Add(Q2.x, Q2.y, x3, y3)
 
-	Q2 := new(big.Int).Set(Beta2)
-	Q2.Mul(Q2, R)
-	Q2.Add(Q2, new(big.Int).Mul(Gamma2, G))
-
-	S2 := new(big.Int).Set(Beta2)
-	S2.Mul(S2, P[w3minusb])
-	S2.Add(S2, new(big.Int).Mul(Gamma2, L))
+	S2.x, S2.y = curve.ScalarMult(P[w3minusb].x, P[w3minusb].y, Beta2.Bytes())
+	x4, y4 := curve.ScalarMult(L.x, L.y, Gamma2.Bytes())
+	S2.x, S2.y = curve.Add(S2.x, S2.y, x4, y4)
 
 	// 使用 KDF 函数从 S1 和 S2 中生成密钥 K1 和 K2
 	K1 := KDF(S1)

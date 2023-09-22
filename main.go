@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/rand"
+	"crypto/elliptic"
 	"crypto/sha256"
 	"encoding/csv"
 	"fmt"
@@ -18,6 +18,7 @@ var mu sync.Mutex
 var totalTime time.Duration
 var wg sync.WaitGroup
 type ADCTList []ADCT
+var curve elliptic.Curve
 
 type GeneInfor struct {
 	GeneID	int
@@ -40,26 +41,11 @@ type DiseaseData struct {
 
 func init() {
 	// 在 init 函数中为全局变量赋值
-	q, _ = rand.Prime(rand.Reader, 2048)
-	// 计算 (q-1)/2
-	pMinus1Div2 := new(big.Int).Rsh(q, 1)
-
-	// 寻找一个生成元 G
-	for G == nil {
-		// 生成一个随机整数 candidate 在 [2, q-1] 范围内
-		candidate, _ := rand.Int(rand.Reader, new(big.Int).Sub(q, big.NewInt(2)))
-
-		// 计算 candidate^((q-1)/2) % q
-		result := new(big.Int).Exp(candidate, pMinus1Div2, q)
-
-		// 如果结果不等于 1，candidate 是生成元
-		if result.Cmp(big.NewInt(1)) != 0 {
-			G = candidate
-		}
-	}
+	curve = elliptic.P521()
+	q = curve.Params().P
 }
 
-func H(y int) *big.Int {
+func H(y int) (*big.Int, *big.Int, error) {
 	// 将输入转换为字节数组
 	inputBytes := []byte(fmt.Sprintf("%d", y))
 
@@ -67,16 +53,41 @@ func H(y int) *big.Int {
 	hash := sha256.Sum256(inputBytes)
 
 	// 将哈希值转换为 *big.Int
-	hashInt := new(big.Int)
-	hashInt.SetBytes(hash[:])
+	hashInt := new(big.Int).SetBytes(hash[:])
 
-	// 将哈希值模 q，确保在 [1, q-1] 范围内
-	hashInt.Mod(hashInt, q)
+	// 计算 x1，确保在 [1, p-1] 范围内
+	x1 := new(big.Int).Set(hashInt)
+	x1.Mod(x1, curve.Params().P)
 
-	// 将结果加 1，以确保在 [1, q-1] 范围内
-	hashInt.Add(hashInt, big.NewInt(1))
+	// 计算 y^2 模 p-521
+	ySquared := new(big.Int)
+	ySquared.Exp(x1, big.NewInt(3), nil)
+	ySquared.Sub(ySquared, big.NewInt(3).Mul(x1, big.NewInt(3)))
+	ySquared.Add(ySquared, curve.Params().B)
+	ySquared.Mod(ySquared, curve.Params().P)
 
-	return hashInt
+	// 尝试计算 ModSqrt
+	y1 := ModSqrt(ySquared, curve.Params().P)
+
+	// 创建椭圆曲线上的点
+	x1, y1 = curve.ScalarBaseMult(x1.Bytes())
+
+	return x1, y1, nil
+}
+
+// ModSqrt 计算给定值的平方根（模 p）
+func ModSqrt(a, p *big.Int) *big.Int {
+	// 计算 a^(p+1)/4
+	exp := new(big.Int).Add(p, big.NewInt(1))
+	exp.Div(exp, big.NewInt(4))
+	result := new(big.Int).Exp(a, exp, p)
+
+	// 检查是否为平方根
+	square := new(big.Int).Exp(result, big.NewInt(2), p)
+	if square.Cmp(a) == 0 {
+		return result
+	}
+	return nil // 无效的平方根
 }
 
 func atoi(s string) int {
@@ -162,13 +173,12 @@ func main() {
 		adctList = append(adctList, diseaseData.Adct)
 	}
 	// 创建一个示例 U（这里使用一些整数作为示例）
-	U := make([]int, 1000)
-	for i := 1; i <= 1000; i++ {
-		U[i-1] = i
-	}
+	U := X
 
 	data := "C1833692" // 字符串
-	byteData := []byte(data) // 转换为 []byte
+	mu.Lock()
+	byteData := []byte(data) // 修改 byteData
+	mu.Unlock()
 	// 调用 SePost 生成 pdata 和 alpha
 
 	pdata, alpha := SePost(X)
@@ -176,7 +186,7 @@ func main() {
 	idList := []int{}
 	mList := []int{}
 	adList := [][]byte{}
-	numUsers := 1000 //用户数
+	numUsers := 10 //用户数
 
 	wg.Add(numUsers)
 
@@ -187,7 +197,7 @@ func main() {
 			// 生成 ckey 并获取时间
 			ckey := ClInit(pdata, U) // 这里使用 pdata 和 U
 
-			id, Q1, ct1, Q2, ct2 := ClVch(pdata, ckey, X[userID-1], userID, byteData, G, q)
+			id, Q1, ct1, Q2, ct2 := ClVch(pdata, ckey, X[userID-1], userID, byteData, q)
 			vouch := Vouch{
 				Id:  id,
 				Q1:  Q1,
@@ -197,7 +207,7 @@ func main() {
 			}
 			SeSTime := time.Now()
 			SeCollect(alpha, vouch, &idList, &mList, &adList)
-			err := SeDec(ckey.Adkey, adList[len(adList)-1], &byteData)
+			err := SeDec(ckey.Adkey, adList[0], &byteData)
 			elapsed := time.Since(SeSTime)
 			mu.Lock()
 			totalTime += elapsed
@@ -205,9 +215,9 @@ func main() {
 			if err != nil {
 				fmt.Printf("User %d: Error during SeDec: %v\n", userID, err)
 			}
-			fmt.Println("Match successful!")
 			for _, adct := range adctList {
 				if adct.ConceptID == string(byteData) && byteData != nil{
+					fmt.Println("Match successful!")
 					fmt.Printf("User %d: You might have %s\n",userID , adct.DiseaseName)
 				}
 			}

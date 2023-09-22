@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
@@ -10,13 +11,23 @@ import (
 )
 
 const (
-	maxAttempts = 100000000 // 最大迁移尝试次数
+	maxAttempts = 100000 // 最大迁移尝试次数
 )
 
+type L struct {
+	x *big.Int
+	y *big.Int
+}
+
+type Pi struct{
+	x *big.Int
+	y *big.Int
+}
+
 type Pdata struct {
-	L   *big.Int
+	L   L
 	N0  int
-	P   []*big.Int
+	P   []Pi
 	H1  func(int) int
 	H2  func(int) int
 }
@@ -39,7 +50,7 @@ func convertGeneInfoToX(geneInfo GeneInfor) int {
 
 // MkHT1 用于生成哈希表大小 n0 和两个哈希函数 h1, h2
 func MkHT1(sizeX int) (int, func(int) int, func(int) int) {
-	// 假设哈希表的大小 n0 是集合大小的四倍
+	// 假设哈希表的大小 n0 是集合大小
 	n0 := sizeX * 2
 
 	// 使用 CityHash 替代 MurmurHash
@@ -127,29 +138,45 @@ func MkHT2(X []int, h1, h2 func(int) int, n0 int) []int {
 func SePost(X []int) (Pdata, *big.Int) {
 	n0, h1, h2 := MkHT1(len(X))
 	T := MkHT2(X, h1, h2, n0)
-
-	// 随机生成一个大于等于 1，小于 q/G 的随机整数
-	alpha, _ := rand.Int(rand.Reader, new(big.Int).Div(q, G))
-
-	// 将 alpha 增加 1，确保它在 [1, q-1] 范围内
-	alpha.Add(alpha, big.NewInt(1))
-	P := make([]*big.Int, n0)
+	fmt.Println("T: ", T)
+	// 随机生成一个大于等于 1，小于 q-1 的随机整数
+	alpha, _ := rand.Int(rand.Reader, new(big.Int).Sub(curve.Params().P, big.NewInt(1)))
+	P := make([]Pi, n0)
 
 	for i := 0; i < n0; i++ {
 		if T[i] != -1 {
 			// 如果 T[i] 不为空，则计算 Pi = α * H(T[i])
-			P[i] = new(big.Int).Mul(alpha, H(T[i]))
+			x, y, err := H(T[i])
+			if err != nil {
+				fmt.Println("Error calculating Pi:", err)
+				continue
+			}
+			PiX, PiY := curve.ScalarMult(x, y, alpha.Bytes())
+			if !curve.IsOnCurve(PiX, PiY) {
+				fmt.Println("Generated point is not on the curve")
+				continue
+			}
+			P[i].x = PiX
+			P[i].y = PiY
 		} else {
 			// 否则 Pi 随机选择一个不为 0 的值
-			randValue, _ := rand.Int(rand.Reader, new(big.Int).Sub(q, big.NewInt(1)))
-			one := big.NewInt(1)
-			randValue.Add(randValue, one) // 加一确保不为 0
-			P[i] = randValue
+			_ ,x, y, _ := elliptic.GenerateKey(curve,rand.Reader)
+			if !curve.IsOnCurve(x, y) {
+				fmt.Println("Generated point is not on the curve")
+				continue
+			}
+			P[i].x = x
+			P[i].y = y
 		}
 	}
 
 	// 计算 L
-	L := new(big.Int).Mul(alpha, G)
+	x1, y1:= curve.ScalarBaseMult(alpha.Bytes())
+
+	L := L{
+		x: x1,
+		y: y1,
+	}
 
 	// 创建 pdata 结构体并设置字段
 	pdata := Pdata{
