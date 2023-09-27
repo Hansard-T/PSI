@@ -5,8 +5,6 @@ import (
 	"crypto/cipher"
 	"encoding/json"
 	"math/big"
-	"math/rand"
-	"time"
 )
 
 type Vouch struct {
@@ -20,37 +18,7 @@ type Vouch struct {
 type IM struct {
 	I int
 	Match int
-}
-
-func generateY() int {
-	rand.Seed(time.Now().UnixNano()) // 使用当前时间作为随机数种子
-
-	// 生成1000以内的随机数
-	y := rand.Intn(1000)
-	return y
-}
-
-func generateX() []int {
-	rand.Seed(time.Now().UnixNano()) // 设置随机数种子，以确保每次运行都产生不同的随机数
-
-	// 创建一个 map 用于存储已生成的数字，以确保不重复
-	uniqueNumbers := make(map[int]bool)
-
-	// 创建一个切片用于存储不重复的数字
-	uniqueSlice := make([]int, 0)
-
-	for len(uniqueSlice) < 1000 {
-		// 生成一个随机数
-		randomNumber := rand.Intn(1000) + 1
-
-		// 检查随机数是否已经存在于 map 中，如果不存在，则添加到切片和 map 中
-		if !uniqueNumbers[randomNumber] {
-			uniqueNumbers[randomNumber] = true
-			uniqueSlice = append(uniqueSlice, randomNumber)
-		}
-	}
-	return uniqueSlice
-}
+}D
 
 func SeDec(key, ciphertext []byte, plaintext interface{}) error {
 	// 创建一个 AES 块

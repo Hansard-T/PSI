@@ -13,7 +13,6 @@ import (
 )
 
 var q *big.Int
-var G *big.Int
 var mu sync.Mutex
 var totalTime time.Duration
 var wg sync.WaitGroup
@@ -167,15 +166,9 @@ func main() {
 		X = append(X, x)
 	}
 
-	// 遍历 diseaseDataList 并提取 ADCT 部分
-	adctList := ADCTList{}
-	for _, diseaseData := range diseaseDataList {
-		adctList = append(adctList, diseaseData.Adct)
-	}
-	// 创建一个示例 U（这里使用一些整数作为示例）
 	U := X
 
-	data := "C1833692" // 字符串
+	data := "C1833692" // 也许可以是个人的姓名或者其他身份信息，只有在匹配上时，才会获得这些消息
 	mu.Lock()
 	byteData := []byte(data) // 修改 byteData
 	mu.Unlock()
@@ -189,15 +182,14 @@ func main() {
 	numUsers := 10 //用户数
 
 	wg.Add(numUsers)
-
 	for i := 1; i <= numUsers; i++ {
 		go func(userID int) {
 			defer wg.Done()
 
 			// 生成 ckey 并获取时间
-			ckey := ClInit(pdata, U) // 这里使用 pdata 和 U
+			adkey := ClInit(pdata, U) // 这里使用 pdata 和 U
 
-			id, Q1, ct1, Q2, ct2 := ClVch(pdata, ckey, X[userID-1], userID, byteData, q)
+			id, Q1, ct1, Q2, ct2 := ClVch(pdata, adkey, X[userID-1], userID, byteData, q)
 			vouch := Vouch{
 				Id:  id,
 				Q1:  Q1,
@@ -207,7 +199,7 @@ func main() {
 			}
 			SeSTime := time.Now()
 			SeCollect(alpha, vouch, &idList, &mList, &adList)
-			err := SeDec(ckey.Adkey, adList[0], &byteData)
+			err := SeDec(adkey, adList[0], &byteData)
 			elapsed := time.Since(SeSTime)
 			mu.Lock()
 			totalTime += elapsed
@@ -215,12 +207,7 @@ func main() {
 			if err != nil {
 				fmt.Printf("User %d: Error during SeDec: %v\n", userID, err)
 			}
-			for _, adct := range adctList {
-				if adct.ConceptID == string(byteData) && byteData != nil{
-					fmt.Println("Match successful!")
-					fmt.Printf("User %d: You might have %s\n",userID , adct.DiseaseName)
-				}
-			}
+			fmt.Println("Match success.")
 		}(i)
 	}
 

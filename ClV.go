@@ -110,7 +110,7 @@ func RandB() int64 {
 	return 2
 }
 
-func ClVch(pdata Pdata, ckey CKey, y int, id int, ad []byte, q *big.Int) (int, Q, []byte, Q, []byte) {
+func ClVch(pdata Pdata, adkey []byte, y int, id int, ad []byte, q *big.Int) (int, Q, []byte, Q, []byte) {
 	// 从 pdata 中解析出其组件
 	var R Hxy
 	var Q1 Q
@@ -121,9 +121,6 @@ func ClVch(pdata Pdata, ckey CKey, y int, id int, ad []byte, q *big.Int) (int, Q
 	P := pdata.P
 	h1 := pdata.H1
 	h2 := pdata.H2
-
- 	// 从 ckey 中解析出Adkey
- 	adkey := ckey.Adkey
 
 	// 使用 SE_Enc 函数对 ad 加密
 	adct, _:= SeEnc(adkey, ad)

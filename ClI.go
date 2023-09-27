@@ -6,13 +6,11 @@ import (
 )
 
 const (
-	k = 256 // 根据您的需求设置 adkey 的位数
-	t = 128 // 根据您的需求设置 a1, a2, ... 的位数
+	k = 256
 )
 
 type CKey struct {
 	Adkey []byte
-	//A     [][]byte
 }
 // Valid 验证 pdata 是否有效
 func Valid(pdata Pdata, U []int) bool {
@@ -48,7 +46,7 @@ func Valid(pdata Pdata, U []int) bool {
 	return true
 }
 
-func ClInit(pdata Pdata ,U []int) CKey {
+func ClInit(pdata Pdata ,U []int) []byte {
 	// 首先验证 pdata 是否有效
 	if !Valid(pdata, U) {
 		panic("Invalid")
@@ -61,8 +59,5 @@ func ClInit(pdata Pdata ,U []int) CKey {
 		panic(err)
 	}
 
-	// 组合 adkey 和 a1, a2, ..., at 成为 ckey
-	ckey := CKey{adkey}
-
-	return ckey
+	return adkey
 }
