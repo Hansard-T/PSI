@@ -18,7 +18,7 @@ type Vouch struct {
 type IM struct {
 	I int
 	Match int
-}D
+}
 
 func SeDec(key, ciphertext []byte, plaintext interface{}) error {
 	// 创建一个 AES 块
